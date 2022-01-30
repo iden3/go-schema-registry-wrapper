@@ -11,12 +11,14 @@ import (
 )
 
 func main() {
-	testSave()
+	// testSave()
 	// testGetSchemaBytesByName()
+	// testGetSchemaHashByName()
+	testGetSchemaBytesByHash()
 }
 
 func testSave() {
-	addr := "0xC93143C6dd477268133CDFD4ba117aC8293362F2"
+	addr := os.Getenv("TEST_ADDR")
 	url := os.Getenv("RPC_URL")
 	ctx := context.Background()
 	b, err := json.Marshal(wrapper.JsonABI)
@@ -24,7 +26,9 @@ func testSave() {
 		errors.New("fail to marshal json")
 	}
 
-	err = wrapper.SaveSchema(ctx, url, addr, "test2", b)
+	t, err := wrapper.SaveSchema(ctx, url, addr, "test", b)
+
+	fmt.Println(t.Hash())
 
 	if err != nil {
 		errors.Wrap(err, "fail to marshal json")
@@ -34,7 +38,7 @@ func testSave() {
 }
 
 func testGetSchemaBytesByName() {
-	addr := "0xC93143C6dd477268133CDFD4ba117aC8293362F2"
+	addr := os.Getenv("TEST_ADDR")
 	url := os.Getenv("RPC_URL")
 	ctx := context.Background()
 
@@ -49,11 +53,56 @@ func testGetSchemaBytesByName() {
 
 	err = json.Unmarshal(h, &a)
 
-	fmt.Println(err.Error())
-
 	if err != nil {
+		fmt.Println(err.Error())
 		errors.Wrap(err, "fail to marshal json")
 	}
 
-	fmt.Println(h)
+	fmt.Println(a)
+}
+
+func testGetSchemaHashByName() {
+	addr := os.Getenv("TEST_ADDR")
+	url := os.Getenv("RPC_URL")
+	ctx := context.Background()
+
+	h, err := wrapper.GetSchemaHashByName(ctx, url, addr, "test2")
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println(h.Hex())
+}
+
+func testGetSchemaBytesByHash() {
+	addr := os.Getenv("TEST_ADDR")
+	url := os.Getenv("RPC_URL")
+	ctx := context.Background()
+
+	h, err := wrapper.GetSchemaHashByName(ctx, url, addr, "test2")
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	hash := h.Hex()
+
+	b, err := wrapper.GetSchemaBytesByHash(ctx, url, addr, hash)
+
+	if err != nil {
+		errors.Wrap(err, "fail to marshal json")
+		fmt.Println(err)
+	}
+
+	var a interface{}
+
+	err = json.Unmarshal(b, &a)
+
+	if err != nil {
+		fmt.Println(err.Error())
+		errors.Wrap(err, "fail to marshal json")
+	}
+
+	fmt.Println(a)
 }

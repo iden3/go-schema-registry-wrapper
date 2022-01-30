@@ -34,7 +34,7 @@ const (
 // contractAddress is contract address
 // sName schema name
 // body json schema bytes
-func SaveSchema(ctx context.Context, rpcURL, contractAddress, sName string, body []byte) error {
+func SaveSchema(ctx context.Context, rpcURL, contractAddress, sName string, body []byte) (*types.Transaction, error) {
 
 	c := NewContractBuilder(rpcURL, contractAddress, saveMethod).
 		WithSchemaName(sName).
@@ -44,16 +44,16 @@ func SaveSchema(ctx context.Context, rpcURL, contractAddress, sName string, body
 
 	cl, err := ethclient.DialContext(ctx, c.rpc)
 	if err != nil {
-		return errors.Errorf(errRPCClientCreationMessage, err.Error())
+		return nil, errors.Errorf(errRPCClientCreationMessage, err.Error())
 	}
 	defer cl.Close()
 
-	_, err = callSave(ctx, cl, c)
+	t, err := callSave(ctx, cl, c)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return t, nil
 }
 
 // GetSchemaBytesByHash is used geting schema body by hash
@@ -87,7 +87,7 @@ func GetSchemaBytesByHash(ctx context.Context, rpcURL, contractAddress, hash str
 // name - schema name
 func GetSchemaHashByName(ctx context.Context, rpcURL, contractAddress, name string) (*common.Hash, error) {
 	c := NewContractBuilder(rpcURL, contractAddress, getSchemaHashByNameMethod).
-		WithSchemaHash(name).
+		WithSchemaName(name).
 		Build()
 
 	outputs, err := contractCall(ctx, c)
@@ -96,13 +96,13 @@ func GetSchemaHashByName(ctx context.Context, rpcURL, contractAddress, name stri
 		return nil, err
 	}
 
-	output, ok := outputs[0].([]byte)
-
-	h := common.BytesToHash(output)
-
+	output, ok := outputs[0].([32]uint8)
 	if !ok {
 		return nil, errors.New("expected result is not common.Hash")
 	}
+
+	b := output[:]
+	h := common.BytesToHash(b)
 
 	return &h, nil
 }
@@ -122,7 +122,7 @@ func GetSchemaBytesByName(ctx context.Context, rpcURL, contractAddress, name str
 	}
 
 	output, ok := outputs[0].([]byte)
-	
+
 	if !ok {
 		return nil, errors.New("expected result is not []byte")
 	}
@@ -143,7 +143,10 @@ func contractCall(ctx context.Context, crt *schemaContract) ([]interface{}, erro
 	case saveMethod:
 		data, err = StateABI.Pack(crt.method, crt.schemaName, crt.schemaBody)
 	case getSchemaBytesByHashMethod:
-		data, err = StateABI.Pack(crt.method, crt.hash)
+		b := common.FromHex(crt.hash)
+		var arr [32]uint8
+		copy(arr[:], b[:32])
+		data, err = StateABI.Pack(crt.method, arr)
 	case getSchemaHashByNameMethod:
 		data, err = StateABI.Pack(crt.method, crt.schemaName)
 	case getSchemaBytesByNameMethod:
@@ -221,8 +224,8 @@ func callSave(ctx context.Context, client *ethclient.Client, crt *schemaContract
 	}
 
 	gasLimit, err := client.EstimateGas(ctx, ethereum.CallMsg{
-		From: fromAddress,
-		Data: data,
+		From:  fromAddress,
+		Data:  data,
 		Value: big.NewInt(0),
 	})
 
