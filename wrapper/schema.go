@@ -4,8 +4,11 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/core/types"
 	"log"
 	"math/big"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -35,6 +38,7 @@ func SaveSchema(ctx context.Context, rpcURL, contractAddress, sName string, body
 	c := NewContractBuilder(rpcURL, contractAddress, saveMethod).
 		WithSchemaName(sName).
 		WithSchemaBytes(body).
+		WithPrivateKey().
 		Build()
 
 	cl, err := ethclient.DialContext(ctx, c.rpc)
@@ -43,7 +47,7 @@ func SaveSchema(ctx context.Context, rpcURL, contractAddress, sName string, body
 	}
 	defer cl.Close()
 
-	err = callSave(ctx, cl, c)
+	_, err = callSave(ctx, cl, c)
 
 	if err != nil {
 		return err
@@ -117,7 +121,7 @@ func GetSchemaBytesByName(ctx context.Context, rpcURL, contractAddress, name str
 	}
 
 	output, ok := outputs[0].([]byte)
-
+	
 	if !ok {
 		return nil, errors.New("expected result is not []byte")
 	}
@@ -171,10 +175,12 @@ func contractCall(ctx context.Context, crt *schemaContract) ([]interface{}, erro
 	return outputs, nil
 }
 
-func callSave(ctx context.Context, client *ethclient.Client, crt *schemaContract) error {
-	privateKey, err := crypto.HexToECDSA("1833d74a66dd5b6a9243e740de14f8f47c18bef101adb9b06103a0f882bbff4f")
+func callSave(ctx context.Context, client *ethclient.Client, crt *schemaContract) (*types.Transaction, error) {
+
+	privateKey, err := crypto.HexToECDSA(crt.privateKeyHex)
+
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	publicKey := privateKey.Public()
@@ -185,6 +191,7 @@ func callSave(ctx context.Context, client *ethclient.Client, crt *schemaContract
 
 	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
 	fmt.Println(fromAddress.Hex())
+
 	nonce, err := client.PendingNonceAt(ctx, fromAddress)
 	if err != nil {
 		log.Fatal(err)
@@ -195,35 +202,47 @@ func callSave(ctx context.Context, client *ethclient.Client, crt *schemaContract
 		log.Fatal(err)
 	}
 
-	gasLimit := client.EstimateGas(ctx, )
-
-	// gasCap, err := client.SuggestGasTipCap(ctx)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-
-	inc := new(big.Int).Set(gasPrice)
-	inc.Div(inc, new(big.Int).SetUint64(10))
-	gasPrice.Add(gasPrice, inc)
-	fmt.Fprintln("Transaction metadata %s", "gasPrice", gasPrice)
+	address := common.HexToAddress(crt.address)
 	auth := bind.NewKeyedTransactor(privateKey)
+	data, err := StateABI.Pack(crt.method, crt.schemaName)
+
+	if err != nil {
+		return nil, err
+	}
+
+	gasLimit, err := client.EstimateGas(ctx, ethereum.CallMsg{
+		From: address,
+		Data: data,
+	})
+
+	if err != nil {
+		return nil, err
+	}
 
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = big.NewInt(0) // in wei
 	auth.GasLimit = gasLimit
 	auth.GasPrice = gasPrice
 
-	address := common.HexToAddress(crt.address)
-	instance, err := NewWrapper(address, client)
+	abiJ, err := abi.JSON(strings.NewReader(JsonABI))
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
-	t, err := instance.Save(auth, crt.schemaName, crt.schemaBody)
-	fmt.Println(t)
+
+	boundContract := bind.NewBoundContract(address, abiJ, client, client, client)
+	t, err := boundContract.Transact(auth, crt.method, crt.schemaName, crt.schemaBody)
 
 	if err != nil {
 		log.Fatal(err)
 	}
-	return nil
+
+	fmt.Println(t)
+
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+
+	return t, nil
 
 }

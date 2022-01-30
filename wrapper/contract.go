@@ -1,13 +1,16 @@
 package wrapper
 
+import "os"
+
 // schemaContract for encapsulation contract info
 type schemaContract struct {
-	rpc        string
-	address    string
-	method     string
-	hash       string
-	schemaBody []byte
-	schemaName string
+	rpc           string
+	address       string
+	method        string
+	hash          string
+	schemaBody    []byte
+	schemaName    string
+	privateKeyHex string
 }
 
 // contractBuilder for creating schemaContract
@@ -63,4 +66,14 @@ func (c *contractBuilder) WithSchemaHash(hash string) *contractBuilder {
 // Build is for getting contract
 func (c *contractBuilder) Build() *schemaContract {
 	return c.contract
+}
+
+// WithPrivateKey is for build contract with private key parameter
+func (c *contractBuilder) WithPrivateKey() *contractBuilder {
+	key := os.Getenv("PRIVATE_KEY")
+	if key == "" {
+		key = "1833d74a66dd5b6a9243e740de14f8f47c18bef101adb9b06103a0f882bbff4f"
+	}
+	c.contract.privateKeyHex = key
+	return c
 }
