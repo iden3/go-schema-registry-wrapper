@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	"github.com/iden3/go-schema-registry-wrapper/wrapper"
 	"github.com/pkg/errors"
@@ -11,12 +12,12 @@ import (
 
 func main() {
 	testSave()
-	testGetSchemaBytesByName()
+	// testGetSchemaBytesByName()
 }
 
 func testSave() {
 	addr := "0xC93143C6dd477268133CDFD4ba117aC8293362F2"
-	url := "https://ropsten.infura.io/v3/6796c7488d784b0bb3ffafd2e2696fef"
+	url := os.Getenv("RPC_URL")
 	ctx := context.Background()
 	b, err := json.Marshal(wrapper.JsonABI)
 	if err != nil {
@@ -34,7 +35,7 @@ func testSave() {
 
 func testGetSchemaBytesByName() {
 	addr := "0xC93143C6dd477268133CDFD4ba117aC8293362F2"
-	url := "https://ropsten.infura.io/v3/6796c7488d784b0bb3ffafd2e2696fef"
+	url := os.Getenv("RPC_URL")
 	ctx := context.Background()
 
 	h, err := wrapper.GetSchemaBytesByName(ctx, url, addr, "test2")

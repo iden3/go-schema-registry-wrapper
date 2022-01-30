@@ -71,9 +71,6 @@ func (c *contractBuilder) Build() *schemaContract {
 // WithPrivateKey is for build contract with private key parameter
 func (c *contractBuilder) WithPrivateKey() *contractBuilder {
 	key := os.Getenv("PRIVATE_KEY")
-	if key == "" {
-		key = "1833d74a66dd5b6a9243e740de14f8f47c18bef101adb9b06103a0f882bbff4f"
-	}
 	c.contract.privateKeyHex = key
 	return c
 }

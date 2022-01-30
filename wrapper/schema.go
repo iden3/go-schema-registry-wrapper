@@ -4,11 +4,12 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/core/types"
 	"log"
 	"math/big"
 	"strings"
+
+	"github.com/ethereum/go-ethereum/accounts/abi"
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/pkg/errors"
 
@@ -203,21 +204,31 @@ func callSave(ctx context.Context, client *ethclient.Client, crt *schemaContract
 	}
 
 	address := common.HexToAddress(crt.address)
-	auth := bind.NewKeyedTransactor(privateKey)
-	data, err := StateABI.Pack(crt.method, crt.schemaName)
+
+	id, err := client.NetworkID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, id)
+
+	if err != nil {
+		return nil, err
+	}
+	data, err := StateABI.Pack(crt.method, crt.schemaName, crt.schemaBody)
 
 	if err != nil {
 		return nil, err
 	}
 
 	gasLimit, err := client.EstimateGas(ctx, ethereum.CallMsg{
-		From: address,
+		From: fromAddress,
 		Data: data,
+		Value: big.NewInt(0),
 	})
 
-	if err != nil {
-		return nil, err
-	}
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = big.NewInt(0) // in wei
