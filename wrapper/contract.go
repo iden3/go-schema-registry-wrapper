@@ -2,8 +2,8 @@ package wrapper
 
 import "os"
 
-// schemaContract for encapsulation contract info
-type schemaContract struct {
+// SchemaContract for encapsulation contract info
+type SchemaContract struct {
 	rpc           string
 	address       string
 	method        string
@@ -13,63 +13,63 @@ type schemaContract struct {
 	privateKeyHex string
 }
 
-// contractBuilder for creating schemaContract
-type contractBuilder struct {
-	contract *schemaContract
+// ContractBuilder for creating schemaContract
+type ContractBuilder struct {
+	contract *SchemaContract
 }
 
-//NewContractBuilder constructor for contract
-func NewContractBuilder(rpc, address, method string) *contractBuilder {
-	return &contractBuilder{contract: &schemaContract{
+// NewContractBuilder constructor for contract
+func NewContractBuilder(rpc, address, method string) *ContractBuilder {
+	return &ContractBuilder{contract: &SchemaContract{
 		rpc:     rpc,
 		address: address,
 		method:  method,
 	}}
 }
 
-// WithWithRpc is for build contract with rpc parameter
-func (c *contractBuilder) WithWithRpc(rpc string) *contractBuilder {
+// WithWithRPC is for build contract with rpc parameter
+func (c *ContractBuilder) WithWithRPC(rpc string) *ContractBuilder {
 	c.contract.rpc = rpc
 	return c
 }
 
 // WithMethod is for build contract with method parameter
-func (c *contractBuilder) WithMethod(method string) *contractBuilder {
+func (c *ContractBuilder) WithMethod(method string) *ContractBuilder {
 	c.contract.method = method
 	return c
 }
 
 // WithAddress is for build contract with address parameter
-func (c *contractBuilder) WithAddress(address string) *contractBuilder {
+func (c *ContractBuilder) WithAddress(address string) *ContractBuilder {
 	c.contract.address = address
 	return c
 }
 
-// WithAddress is for build contract with schema name parameter
-func (c *contractBuilder) WithSchemaName(name string) *contractBuilder {
+// WithSchemaName is for build contract with schema name parameter
+func (c *ContractBuilder) WithSchemaName(name string) *ContractBuilder {
 	c.contract.schemaName = name
 	return c
 }
 
 // WithSchemaBytes is for build contract with schema body parameter
-func (c *contractBuilder) WithSchemaBytes(body []byte) *contractBuilder {
+func (c *ContractBuilder) WithSchemaBytes(body []byte) *ContractBuilder {
 	c.contract.schemaBody = body
 	return c
 }
 
 // WithSchemaHash is for build contract with schema hash parameter
-func (c *contractBuilder) WithSchemaHash(hash string) *contractBuilder {
+func (c *ContractBuilder) WithSchemaHash(hash string) *ContractBuilder {
 	c.contract.hash = hash
 	return c
 }
 
 // Build is for getting contract
-func (c *contractBuilder) Build() *schemaContract {
+func (c *ContractBuilder) Build() *SchemaContract {
 	return c.contract
 }
 
 // WithPrivateKey is for build contract with private key parameter
-func (c *contractBuilder) WithPrivateKey() *contractBuilder {
+func (c *ContractBuilder) WithPrivateKey() *ContractBuilder {
 	key := os.Getenv("PRIVATE_KEY")
 	c.contract.privateKeyHex = key
 	return c

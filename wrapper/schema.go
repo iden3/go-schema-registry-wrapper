@@ -3,8 +3,6 @@ package wrapper
 import (
 	"context"
 	"crypto/ecdsa"
-	"fmt"
-	"log"
 	"math/big"
 	"strings"
 
@@ -25,7 +23,7 @@ const (
 	getSchemaBytesByNameMethod         = "getBytesByName"
 	getSchemaHashByNameMethod          = "getHashByName"
 	saveMethod                         = "save"
-	errRPCClientCreationMessage        = "couldn't create rpc client: %s"
+	errRPCClientCreationMessage        = "couldn't create rpc client"
 	errCallArgumentEncodedErrorMessage = "wrong arguments were provided"
 )
 
@@ -44,7 +42,7 @@ func SaveSchema(ctx context.Context, rpcURL, contractAddress, sName string, body
 
 	cl, err := ethclient.DialContext(ctx, c.rpc)
 	if err != nil {
-		return nil, errors.Errorf(errRPCClientCreationMessage, err.Error())
+		return nil, errors.Wrap(err, errRPCClientCreationMessage)
 	}
 	defer cl.Close()
 
@@ -56,7 +54,7 @@ func SaveSchema(ctx context.Context, rpcURL, contractAddress, sName string, body
 	return t, nil
 }
 
-// GetSchemaBytesByHash is used geting schema body by hash
+// GetSchemaBytesByHash is used getting schema body by hash
 // rpcURL - url to connect to the blockchain
 // contractAddress is contract address
 // hash hash string to retrieve schema body
@@ -81,7 +79,7 @@ func GetSchemaBytesByHash(ctx context.Context, rpcURL, contractAddress, hash str
 	return output, nil
 }
 
-// GetSchemaBytesByHash is used geting schema hash by schema name
+// GetSchemaHashByName is used getting schema hash by schema name
 // rpcURL - url to connect to the blockchain
 // contractAddress - contract address
 // name - schema name
@@ -107,9 +105,10 @@ func GetSchemaHashByName(ctx context.Context, rpcURL, contractAddress, name stri
 	return &h, nil
 }
 
-// VerifyState is used to verify identity state
+// GetSchemaBytesByName is used to get schema by name
 // rpcURL - url to connect to the blockchain
 // contractAddress is contract address
+// name is schema name
 func GetSchemaBytesByName(ctx context.Context, rpcURL, contractAddress, name string) ([]byte, error) {
 	c := NewContractBuilder(rpcURL, contractAddress, getSchemaBytesByNameMethod).
 		WithSchemaName(name).
@@ -130,18 +129,16 @@ func GetSchemaBytesByName(ctx context.Context, rpcURL, contractAddress, name str
 	return output, nil
 }
 
-func contractCall(ctx context.Context, crt *schemaContract) ([]interface{}, error) {
+func contractCall(ctx context.Context, crt *SchemaContract) ([]interface{}, error) {
 
 	c, err := ethclient.DialContext(ctx, crt.rpc)
 	if err != nil {
-		return nil, errors.Errorf(errRPCClientCreationMessage, err.Error())
+		return nil, errors.Wrap(err, errRPCClientCreationMessage)
 	}
 	defer c.Close()
 
 	var data []byte
 	switch crt.method {
-	case saveMethod:
-		data, err = StateABI.Pack(crt.method, crt.schemaName, crt.schemaBody)
 	case getSchemaBytesByHashMethod:
 		b := common.FromHex(crt.hash)
 		var arr [32]uint8
@@ -179,7 +176,7 @@ func contractCall(ctx context.Context, crt *schemaContract) ([]interface{}, erro
 	return outputs, nil
 }
 
-func callSave(ctx context.Context, client *ethclient.Client, crt *schemaContract) (*types.Transaction, error) {
+func callSave(ctx context.Context, client *ethclient.Client, crt *SchemaContract) (*types.Transaction, error) {
 
 	privateKey, err := crypto.HexToECDSA(crt.privateKeyHex)
 
@@ -190,20 +187,19 @@ func callSave(ctx context.Context, client *ethclient.Client, crt *schemaContract
 	publicKey := privateKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
 	if !ok {
-		log.Fatal("error casting public key to ECDSA")
+		return nil, errors.New("error casting public key to ECDSA")
 	}
 
 	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
-	fmt.Println(fromAddress.Hex())
 
 	nonce, err := client.PendingNonceAt(ctx, fromAddress)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	gasPrice, err := client.SuggestGasPrice(ctx)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	address := common.HexToAddress(crt.address)
@@ -217,28 +213,13 @@ func callSave(ctx context.Context, client *ethclient.Client, crt *schemaContract
 	if err != nil {
 		return nil, err
 	}
-	data, err := StateABI.Pack(crt.method, crt.schemaName, crt.schemaBody)
-
-	if err != nil {
-		return nil, err
-	}
-
-	gasLimit, err := client.EstimateGas(ctx, ethereum.CallMsg{
-		From:  fromAddress,
-		Data:  data,
-		Value: big.NewInt(0),
-	})
-
-	// if err != nil {
-	// 	return nil, err
-	// }
 
 	auth.Nonce = big.NewInt(int64(nonce))
 	auth.Value = big.NewInt(0) // in wei
-	auth.GasLimit = gasLimit
+	auth.GasLimit = 0          // Gas limit to set for the transaction execution (0 = estimate)
 	auth.GasPrice = gasPrice
 
-	abiJ, err := abi.JSON(strings.NewReader(JsonABI))
+	abiJ, err := abi.JSON(strings.NewReader(JSONABI))
 	if err != nil {
 		return nil, err
 	}
@@ -247,13 +228,6 @@ func callSave(ctx context.Context, client *ethclient.Client, crt *schemaContract
 	t, err := boundContract.Transact(auth, crt.method, crt.schemaName, crt.schemaBody)
 
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println(t)
-
-	if err != nil {
-		log.Fatal(err)
 		return nil, err
 	}
 

@@ -1,69 +1,92 @@
 package wrapper
 
-import "os"
+import (
+	"context"
+	"encoding/json"
+	"os"
+	"testing"
 
+	"github.com/stretchr/testify/assert"
+)
 
 var mockRPCURL = os.Getenv("RPC_URL")
-var mockContractAddress = "0xE4F771f86B34BF7B323d9130c385117Ec39377c3" // before transition
+var mockContractAddress = os.Getenv("TEST_ADDR") // before transition
+var schemaName = "test"
 
-// func TestVerifyState(t *testing.T) {
+// TODO test for schema saving
 
-// 	stateResult, err := VerifyState(context.Background(), mockRPCURL, mockContractAddress, mockGenesisID, mockGenesisState)
+// func TestSaveSchema(t *testing.T) {
+// 	b, _ := json.Marshal(JsonABI)
+// 	tr, err := SaveSchema(context.Background(), mockRPCURL, mockContractAddress, schemaName, b)
 // 	assert.Nil(t, err)
-// 	assert.Equal(t, true, stateResult.Latest)
+// 	assert.NotNil(t, tr)
 // }
 
-// func TestVerifyInvalidRPC(t *testing.T) {
+func TestSaveSchemaExists(t *testing.T) {
 
-// 	invalidURL := "test://invalidurl1234.com"
-// 	_, err := VerifyState(context.Background(), invalidURL, mockContractAddress, mockGenesisID, mockGenesisState)
-// 	assert.NotNil(t, err)
-// 	assert.Contains(t, err.Error(), errRPCClientCreationMessage)
+	b, _ := json.Marshal(JSONABI)
 
-// 	invalidURL = "http://invalidurl1234.com"
-// 	_, err = VerifyState(context.Background(), invalidURL, mockContractAddress, mockGenesisID, mockGenesisState)
+	tr, err := SaveSchema(context.Background(), mockRPCURL, mockContractAddress, schemaName, b)
 
-// 	assert.NotNil(t, err)
-// 	assert.Contains(t, err.Error(), "no such host")
+	assert.NotNil(t, err)
+	assert.Nil(t, tr)
+	assert.Contains(t, err.Error(), "Schema already exists")
+}
 
-// }
+func TestVerifyInvalidRPC(t *testing.T) {
 
-// func TestVerifyGenesisState(t *testing.T) {
+	invalidURL := "test://invalidurl1234.com"
+	b, _ := json.Marshal(JSONABI)
 
-// 	stateResult, err := VerifyState(context.Background(), mockRPCURL, mockContractAddress, mockGenesisID, mockGenesisState)
-// 	assert.Nil(t, err)
-// 	assert.Equal(t, true, stateResult.Latest)
+	_, err := SaveSchema(context.Background(), invalidURL, mockContractAddress, schemaName, b)
 
-// }
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), errRPCClientCreationMessage)
+}
 
-// func TestVerifyGenesisStateWrongID(t *testing.T) {
+func TestGetSchemaBytesByHash(t *testing.T) {
+	ctx := context.Background()
 
-// 	wrongID, _ := new(big.Int).SetString("26592849444054787445766572449338308165040390141345377877344569181291872256", 10)
-// 	_, err := VerifyState(context.Background(), mockRPCURL, mockContractAddress, wrongID, mockGenesisState)
-// 	assert.NotNil(t, err)
-// 	assert.Error(t, err, "ID from genesis state (11A2HgCZ1pUcY8HoNDMjNWEBQXZdUnL3YVnVCUvR5s) and provided (118cr7d17eL2sSYk5hrMBo9MKJrWGD5RrFgsqXupGE) don't match")
+	h, err := GetSchemaHashByName(ctx, mockRPCURL, mockContractAddress, schemaName)
 
-// }
+	assert.Nil(t, err)
+	assert.NotNil(t, h)
 
-// func TestVerifyPublishedLatestState(t *testing.T) {
+	hash := h.Hex()
 
-// 	stateResult, err := VerifyState(context.Background(), mockRPCURL, mockContractAddress, mockIDForPublishedLatestState, mockPublishedLatestState)
-// 	assert.Nil(t, err)
-// 	assert.Equal(t, true, stateResult.Latest)
-// }
+	b, err := GetSchemaBytesByHash(ctx, mockRPCURL, mockContractAddress, hash)
 
-// func TestVerifyStateTransitionCheck(t *testing.T) {
+	assert.Nil(t, err)
+	assert.NotNil(t, b)
 
-// 	// latest state - equal
-// 	stateResult1, err := VerifyState(context.Background(), mockRPCURL, mockContractAddressForTransitionTest, mockIDForTransitionTest, mockGenesisSecondStateForTransitionTest)
-// 	assert.Nil(t, err)
-// 	assert.Equal(t, true, stateResult1.Latest)
+	var j string
 
-// 	// latest state - not equal
-// 	stateResult2, err := VerifyState(context.Background(), mockRPCURL, mockContractAddressForTransitionTest, mockIDForTransitionTest, mockGenesisFistStateForTransitionTest)
-// 	assert.Nil(t, err)
-// 	assert.Equal(t, false, stateResult2.Latest)
-// 	assert.NotEqual(t, 0, stateResult2.TransitionTimestamp)
+	err = json.Unmarshal(b, &j)
 
-// }
+	assert.Nil(t, err)
 
+	assert.Equal(t, j, JSONABI)
+
+}
+
+func TestGetSchemaHashByName(t *testing.T) {
+	h, err := GetSchemaHashByName(context.Background(), mockRPCURL, mockContractAddress, schemaName)
+
+	assert.Nil(t, err)
+	assert.NotNil(t, h)
+}
+
+func TestGetSchemaBytesByName(t *testing.T) {
+
+	b, err := GetSchemaBytesByName(context.Background(), mockRPCURL, mockContractAddress, schemaName)
+
+	assert.Nil(t, err)
+	assert.NotNil(t, b)
+
+	var j string
+
+	err = json.Unmarshal(b, &j)
+	assert.Nil(t, err)
+
+	assert.Equal(t, j, JSONABI)
+}

@@ -7,7 +7,8 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi"
 )
 
-const JsonABI = `[
+// JSONABI is json ethereum contract description
+const JSONABI = `[
 	{
 		"inputs": [
 			{
@@ -85,12 +86,13 @@ const JsonABI = `[
 	}
 ]`
 
+// StateABI json ABI representation
 var StateABI abi.ABI
 
 // nolint // common approach to register default supported circuit
 func init() {
 	var err error
-	StateABI, err = abi.JSON(strings.NewReader(JsonABI))
+	StateABI, err = abi.JSON(strings.NewReader(JSONABI))
 	if err != nil {
 		panic(fmt.Errorf("can't parse state contract abi %v", err))
 	}
