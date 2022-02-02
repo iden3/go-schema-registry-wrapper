@@ -1,15 +1,6 @@
 package wrapper
 
-import (
-	"os"
-)
-
-var mockRPCURL = os.Getenv("RPC_URL")
-var mockContractAddress = os.Getenv("TEST_ADDR") // before transition
-var schemaName = "test"
-
-// TODO test for schema saving
-
+// TODO add proper tests after refactoring
 // func TestSaveSchema(t *testing.T) {
 // 	b, _ := json.Marshal(JsonABI)
 // 	tr, err := SaveSchema(context.Background(), mockRPCURL, mockContractAddress, schemaName, b)

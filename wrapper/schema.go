@@ -1,13 +1,9 @@
 package wrapper
 
 import (
-	"context"
-	"github.com/ethereum/go-ethereum/core/types"
-
 	"github.com/pkg/errors"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 const (
@@ -17,8 +13,11 @@ const (
 	saveMethod                 = "save"
 )
 
+var errorSchemaNameNotFound = errors.New("schema name not found")
+var errorDecodeSchemaHash = errors.New("can't decode schema hash")
+
 // EncodeSchemaBytesByHash is used getting schema body by hash.
-// hash string to retrieve schema body
+// hash is a hex string to retrieve schema body
 func EncodeSchemaBytesByHash(hash string) ([]byte, error) {
 
 	b := common.FromHex(hash)
@@ -33,6 +32,7 @@ func EncodeSchemaBytesByHash(hash string) ([]byte, error) {
 	return data, nil
 }
 
+// DecodeSchemaBytesByHash is for decoding payload bytes for getSchemaBytesByHashMethod contract.
 func DecodeSchemaBytesByHash(payload []byte) ([]byte, error) {
 	return decodeBytes(payload, getSchemaBytesByHashMethod)
 }
@@ -53,13 +53,11 @@ func decodeBytes(payload []byte, method string) ([]byte, error) {
 }
 
 // EncodeSchemaHashByName is used getting schema hash by schema name.
-// name - schema name
 func EncodeSchemaHashByName(name string) ([]byte, error) {
 	return encode(getSchemaHashByNameMethod, name)
 }
 
 // DecodeSchemaHashByName is used getting decode hash by schema name.
-// name - schema name
 func DecodeSchemaHashByName(payload []byte) (*common.Hash, error) {
 	outputs, err := decode(payload, getSchemaHashByNameMethod)
 	if err != nil {
@@ -67,10 +65,10 @@ func DecodeSchemaHashByName(payload []byte) (*common.Hash, error) {
 	}
 	output, ok := outputs[0].([32]uint8)
 	if !ok {
-		return nil, errors.New("expected result is not hash")
+		return nil, errorDecodeSchemaHash
 	}
 	if isAllZeros(output) {
-		return nil, errors.New("unexpected zero hash value")
+		return nil, errorSchemaNameNotFound
 	}
 
 	b := output[:]
@@ -79,6 +77,7 @@ func DecodeSchemaHashByName(payload []byte) (*common.Hash, error) {
 	return &h, nil
 }
 
+// isAllZeros check if array contains only zeros
 func isAllZeros(arr [32]byte) bool {
 	for i := 0; i < len(arr); i++ {
 		if arr[i] != 0 {
@@ -88,6 +87,7 @@ func isAllZeros(arr [32]byte) bool {
 	return true
 }
 
+// encode is helper for ABI.Pack function
 func encode(payload, method string) ([]byte, error) {
 	data, err := ABI.Pack(method, payload)
 
@@ -108,89 +108,23 @@ func decode(payload []byte, method string) ([]interface{}, error) {
 	return outputs, nil
 }
 
-// EncodeSchemaBytesByName is used to get schema by name.
-// name is schema name
+// EncodeSchemaBytesByName is used to get encoded bytes from name for using in getSchemaBytesByNameMethod contract.
 func EncodeSchemaBytesByName(name string) ([]byte, error) {
 	return encode(getSchemaBytesByNameMethod, name)
 }
 
-// DecodeSchemaBytesByName is decoding schema bytes
+// DecodeSchemaBytesByName is used to get decoded bytes from name for using in getSchemaBytesByNameMethod contract.
 func DecodeSchemaBytesByName(payload []byte) ([]byte, error) {
 	return decodeBytes(payload, getSchemaBytesByNameMethod)
 }
 
-func GetSaveTransaction(ctx context.Context, client *ethclient.Client, nonce uint64, contractAddress string, schemaName string, schemaBytes []byte) (*types.Transaction, error) {
+// EncodeSaveTransaction is used to get encoded bytes from name and schema body for using in saveMethod contract.
+func EncodeSaveTransaction(schemaName string, schemaBytes []byte) ([]byte, error) {
 
 	bytesData, err := ABI.Pack(saveMethod, schemaName, schemaBytes)
 	if err != nil {
 		return nil, err
 	}
-	gasPrice, err := client.SuggestGasPrice(ctx)
-	if err != nil {
-		return nil, err
-	}
-	var gasLimit uint64 = 0
 
-	tx := types.NewTransaction(nonce, common.HexToAddress(contractAddress), nil, gasLimit, gasPrice, bytesData)
-
-	return tx, nil
+	return bytesData, nil
 }
-
-//func callSave(ctx context.Context, client *ethclient.Client, crt *SchemaContract) (*types.Transaction, error) {
-//
-//	privateKey, err := crypto.HexToECDSA(crt.privateKeyHex)
-//
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	publicKey := privateKey.Public()
-//	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-//	if !ok {
-//		return nil, errors.New("error casting public key to ECDSA")
-//	}
-//
-//	fromAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
-//
-//	nonce, err := client.PendingNonceAt(ctx, fromAddress)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	gasPrice, err := client.SuggestGasPrice(ctx)
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	address := common.HexToAddress(crt.address)
-//
-//	id, err := client.NetworkID(ctx)
-//	if err != nil {
-//		return nil, err
-//	}
-//	auth, err := bind.NewKeyedTransactorWithChainID(privateKey, id)
-//
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	auth.Nonce = big.NewInt(int64(nonce))
-//	auth.Value = big.NewInt(0) // in wei
-//	auth.GasLimit = 0          // Gas limit to set for the transaction execution (0 = estimate)
-//	auth.GasPrice = gasPrice
-//
-//	abiJ, err := abi.JSON(strings.NewReader(JSONABI))
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	boundContract := bind.NewBoundContract(address, abiJ, client, client, client)
-//	t, err := boundContract.Transact(auth, crt.method, crt.schemaName, crt.schemaBody)
-//
-//	if err != nil {
-//		return nil, err
-//	}
-//
-//	return t, nil
-//
-//}
