@@ -86,13 +86,13 @@ const JSONABI = `[
 	}
 ]`
 
-// StateABI json ABI representation
-var StateABI abi.ABI
+// ABI json ABI representation
+var ABI abi.ABI
 
 // nolint // common approach to register default supported circuit
 func init() {
 	var err error
-	StateABI, err = abi.JSON(strings.NewReader(JSONABI))
+	ABI, err = abi.JSON(strings.NewReader(JSONABI))
 	if err != nil {
 		panic(fmt.Errorf("can't parse state contract abi %v", err))
 	}
