@@ -54,7 +54,7 @@ func decodeBytes(payload []byte, method string) ([]byte, error) {
 
 // EncodeSchemaHashByName is used getting schema hash by schema name.
 func EncodeSchemaHashByName(name string) ([]byte, error) {
-	return encode(getSchemaHashByNameMethod, name)
+	return encode(name, getSchemaHashByNameMethod)
 }
 
 // DecodeSchemaHashByName is used getting decode hash by schema name.
@@ -110,7 +110,7 @@ func decode(payload []byte, method string) ([]interface{}, error) {
 
 // EncodeSchemaBytesByName is used to get encoded bytes from name for using in getSchemaBytesByNameMethod contract.
 func EncodeSchemaBytesByName(name string) ([]byte, error) {
-	return encode(getSchemaBytesByNameMethod, name)
+	return encode(name, getSchemaBytesByNameMethod)
 }
 
 // DecodeSchemaBytesByName is used to get decoded bytes from name for using in getSchemaBytesByNameMethod contract.
