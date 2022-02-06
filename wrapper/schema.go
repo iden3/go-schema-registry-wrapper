@@ -1,6 +1,7 @@
 package wrapper
 
 import (
+	geth "github.com/ethereum/go-ethereum/mobile"
 	"github.com/pkg/errors"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -20,10 +21,13 @@ var errorDecodeSchemaHash = errors.New("can't decode schema hash")
 // hash is a hex string to retrieve schema body
 func EncodeSchemaBytesByHash(hash string) ([]byte, error) {
 
-	b := common.FromHex(hash)
-	var arr [32]uint8
-	copy(arr[:], b[:32])
-	data, err := ABI.Pack(getSchemaBytesByHashMethod, arr)
+	h, err := geth.NewHashFromHex(hash)
+
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := ABI.Pack(getSchemaBytesByHashMethod, h.GetBytes())
 
 	if err != nil {
 		return nil, err
